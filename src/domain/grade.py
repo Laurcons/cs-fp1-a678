@@ -36,6 +36,9 @@ class Grade:
     def is_graded(self):
         return self.__grade_value != 0
 
+    def __eq__(self, other):
+        return self.assignment_id == other.assignment_id and self.student_id == other.student_id
+
 class GradeValidationError(ValidationError):
     pass
 

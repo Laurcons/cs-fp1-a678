@@ -13,9 +13,10 @@ class GradeService:
 
     def assign_to_student(self, assignment_id, student_id):
         """ Assigns an assignment to a student. """
-        if not self.__assignment_repository.id_exists(assignment_id) \
-           or not self.__student_repository.id_exists(student_id):
-            raise GradeOperationError("Student or assignment id doesn't exist")
+        if not self.__assignment_repository.id_exists(assignment_id):
+            raise GradeOperationError("Assignment id doesn't exist")
+        if not self.__student_repository.id_exists(student_id):
+            raise GradeOperationError("Student id doesn't exist")
         grades = self.__grade_repository.find_all_by_predicate(
             lambda g: g.assignment_id == assignment_id and g.student_id == student_id
         )
