@@ -7,6 +7,7 @@ class Grade:
         self.__assignment_id = assignment_id
         self.__student_id = student_id
         self.__grade_value = grade_value
+        GradeValidator.validate(self)
 
     @property
     def assignment_id(self):
@@ -39,6 +40,9 @@ class Grade:
     def __eq__(self, other):
         return self.assignment_id == other.assignment_id and self.student_id == other.student_id
 
+    def __repr__(self):
+        return f"Student#{self.__student_id} asn#{self.__assignment_id} grade_val {self.__grade_value}"
+
 class GradeValidationError(ValidationError):
     pass
 
@@ -47,5 +51,5 @@ class GradeValidator(Validator):
     @staticmethod
     def validate(grade):
         # check that the grade is between 0 (ungraded) and 10 (max grade)
-        if not (grade.grade_value >= 0 or grade.grade_value <= 10):
+        if not (0 <= grade.grade_value <= 10):
             raise GradeValidationError("Grade is invalid")

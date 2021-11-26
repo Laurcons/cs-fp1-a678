@@ -17,13 +17,8 @@ class GradeService:
             raise GradeOperationError("Assignment id doesn't exist")
         if not self.__student_repository.id_exists(student_id):
             raise GradeOperationError("Student id doesn't exist")
-        grades = self.__grade_repository.find_all_by_predicate(
-            lambda g: g.assignment_id == assignment_id and g.student_id == student_id
-        )
-        if len(grades) > 0:
-            return  # the assignment is already assigned
         grade = Grade(assignment_id, student_id, 0)
-        self.__grade_repository.insert_or_update(grade)
+        self.__grade_repository.add(grade)
 
     def assign_to_group(self, assignment_id, group):
         """ Assigns an assignment to a group of students. """
@@ -34,3 +29,15 @@ class GradeService:
     def get_all_assignations(self):
         """ Returns a list of all the assignations. """
         return self.__grade_repository.get_all()
+
+    def apply_grade_to_student(self, assignment_id, student_id, grade_value):
+        """ Applies a grade to a student. If already applied, raises GradeOperationError. """
+        if not self.__assignment_repository.id_exists(assignment_id):
+            raise GradeOperationError("Assignment id doesn't exist")
+        if not self.__student_repository.id_exists(student_id):
+            raise GradeOperationError("Student id doesn't exist")
+        grade = self.__grade_repository.find_id((assignment_id, student_id))
+        if grade.grade_value != 0:
+            raise GradeOperationError("Assignment already graded")
+        grade.grade_value = grade_value
+        self.__grade_repository.update(grade)

@@ -8,13 +8,15 @@ class AssignmentOperationError(BaseException):
 
 class AssignmentService:
     """ Handles operations on the Assignments repository. """
-    def __init__(self, assignment_repository: Repository):
+    def __init__(self, assignment_repository: Repository, student_repository: Repository, grade_repository: Repository):
         self.__assignment_repository = assignment_repository
+        self.__student_repository = student_repository
+        self.__grade_repository = grade_repository
 
     def populate(self):
         """ Adds a couple of entries. """
         self.__assignment_repository.insert_all([
-            Assignment(1, "Assignment 1", datetime.datetime.now() + datetime.timedelta(days=10)),
+            Assignment(1, "Assignment 1", datetime.datetime.now() + datetime.timedelta(days=-10)),
             Assignment(2, "Assignment 2", datetime.datetime.now() + datetime.timedelta(days=20)),
             Assignment(3, "Assignment 3", datetime.datetime.now() + datetime.timedelta(days=30)),
             Assignment(4, "Assignment 4", datetime.datetime.now() + datetime.timedelta(days=40)),
@@ -41,10 +43,13 @@ class AssignmentService:
         if self.__assignment_repository.id_exists(assignment_id):
             raise AssignmentOperationError("Assignment id already exists")
         assignment = Assignment(assignment_id, description, deadline)
-        self.__assignment_repository.insert_or_update(assignment)
+        self.__assignment_repository.add(assignment)
 
     def remove_assignment(self, assignment_id):
         """ Removes an assignment given its id. Returns the removed assignment. """
+        grades = self.__grade_repository.find_all_by_predicate(lambda g: g.assignment_id == assignment_id)
+        for id_pair in [(g.assignment_id, g.student_id) for g in grades]:
+            self.__grade_repository.remove_id(id_pair)
         return self.__assignment_repository.remove_id(assignment_id)
 
     def update_assignment(self, assignment_id, description, deadline):
@@ -52,7 +57,7 @@ class AssignmentService:
         assignment = self.__assignment_repository.find_id(assignment_id)
         assignment.description = description
         assignment.deadline = deadline
-        self.__assignment_repository.insert_or_update(assignment)
+        self.__assignment_repository.update(assignment)
 
     def get_all_assignments(self):
         """ List all assignments. """

@@ -8,6 +8,7 @@ class Student:
         self.__student_id = student_id
         self.__name = name
         self.__group = group
+        StudentValidator.validate(self)
 
     @property
     def student_id(self):

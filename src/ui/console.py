@@ -122,6 +122,39 @@ class Console:
         except GradeOperationError as e:
             print(f"Something went wrong: {e}")
 
+    def __handle_assignations_grade_student(self):
+        student_id = int(input("Enter the student id: "))
+        print("Ungraded assignments for student:")
+        asns = self.__student_service.get_ungraded_assignments_of_student(student_id)
+        for asn in asns:
+            print(asn)
+        if len(asns) == 0:
+            print("Nothing to grade.")
+            return
+        assignment_id = int(input("Enter the assignment id from above: "))
+        grade_value = int(input("Enter the grade: "))
+        self.__grade_service.apply_grade_to_student(assignment_id, student_id, grade_value)
+
+    def __handle_statistics_assignment_students(self):
+        assignment_id = int(input("Enter the assignment id: "))
+        dtos = self.__student_service.get_graded_students_for_assignment(assignment_id)
+        for dto in dtos:
+            print(f"Assignment {dto.assignment}\n"
+                  f" - Student {dto.student}\n"
+                  f" - Grade {dto.grade.grade_value}")
+
+    def __handle_statistics_overdue_students(self):
+        dtos = self.__student_service.get_students_with_late_assignments()
+        for dto in dtos:
+            print(f"Assignment {dto.assignment}\n"
+                  f" - Student {dto.student}\n")
+
+    def __handle_statistics_best_students(self):
+        dtos = self.__student_service.get_students_with_best_situation()
+        for dto in dtos:
+            print(f"Student {dto.student}\n"
+                  f" - Average {dto.average}")
+
     def __run_suboptions(self, suboptions: dict, prompt: str):
         print(prompt)
         subopt = input("Choose: ")
@@ -131,15 +164,14 @@ class Console:
         try:
             suboptions[subopt]()
         except BaseException as e:
-            print(f"Something has happened. Try again? {e}")
+            print(f"Something has happened. {e}")
 
     def __print_menu(self):
         print("\nThe Student Assignment Manager (SAM). What do you want to do?\n"
               "1. Modify assignments\n"
               "2. Modify students\n"
-              "3. Modify assignations\n"
-              # "3. Assign to a student\n"
-              # "4. Assign to a group\n"
+              "3. Modify assignations and grades\n"
+              "4. View statistics\n"
               "x. Exit\n")
 
     def __get_assignments_menu_prompt(self):
@@ -163,6 +195,14 @@ class Console:
                "1. Assign to student\n" \
                "2. Assign to group\n" \
                "3. View all assignations\n" \
+               "4. Grade student\n" \
+               "e. Back\n"
+
+    def __get_statistics_menu_prompt(self):
+        return "What do you want to do?\n" \
+               "1. View graded students with given assignment\n" \
+               "2. View students with overdue assignments\n" \
+               "3. View students with the best averages\n" \
                "e. Back\n"
 
     def start(self):
@@ -183,7 +223,13 @@ class Console:
                 1: self.__handle_assignations_to_student,
                 2: self.__handle_assignations_to_group,
                 3: self.__handle_assignations_list,
-            }, self.__get_assignations_menu_prompt())
+                4: self.__handle_assignations_grade_student,
+            }, self.__get_assignations_menu_prompt()),
+            4: lambda: self.__run_suboptions({
+                1: self.__handle_statistics_assignment_students,
+                2: self.__handle_statistics_overdue_students,
+                3: self.__handle_statistics_best_students,
+            }, self.__get_statistics_menu_prompt())
         }
         while True:
             self.__print_menu()

@@ -14,6 +14,7 @@ class Assignment:
         self.__assignment_id = assignment_id
         self.__description = description
         self.__deadline = deadline
+        AssignmentValidator.validate(self)
 
     @property
     def assignment_id(self):
