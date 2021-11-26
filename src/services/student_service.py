@@ -102,14 +102,25 @@ class StudentService:
         """ Gets a list of students, along with their average. """
         students = self.__student_repository.get_all()
         out = []
-        for student in students:
-            grades = self.__grade_repository.find_all_by_predicate(lambda g: g.student_id == student.student_id and g.is_graded)
-            if len(grades) == 0:
-                continue
-            average = 0.0
-            for grade in grades:
-                average += grade.grade_value
-            average /= len(grades)
-            out.append(StudentSituationDTO(student, average))
+        # for student in students:
+        #     grades = self.__grade_repository.find_all_by_predicate(lambda g: g.student_id == student.student_id and g.is_graded)
+        #     if len(grades) == 0:
+        #         continue
+        #     average = 0.0
+        #     for grade in grades:
+        #         average += grade.grade_value
+        #     average /= len(grades)
+        #     out.append(StudentSituationDTO(student, average))
+        grades = self.__grade_repository.get_all()
+        grade_situation = {}
+        for grade in grades:
+            student_id = grade.student_id
+            if student_id not in grade_situation:
+                grade_situation[student_id] = []
+            grade_situation[student_id].append(grade.grade_value)
+        for student_id in grade_situation:
+            student_name = self.__student_repository.find_id(student_id).name
+            student_average = sum(grade_situation[student_id]) / len(grade_situation[student_id])
+            out.append(StudentSituationDTO(student_name, student_average))
         out.sort(key=lambda dto: dto.average)
         return out

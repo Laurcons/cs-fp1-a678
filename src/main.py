@@ -1,6 +1,4 @@
-from src.domain.assignment import AssignmentValidator
-from src.domain.grade import GradeValidator
-from src.domain.student import StudentValidator
+
 from src.repository.repository import Repository
 from src.services.assignment_service import AssignmentService
 from src.services.grade_service import GradeService
