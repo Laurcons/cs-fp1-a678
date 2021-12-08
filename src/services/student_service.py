@@ -1,18 +1,16 @@
-from src.domain.assignment import Assignment
 from src.domain.student import Student
-from src.domain.student_assignment_grade_dto import StudentAssignmentGradeDTO
-from src.domain.student_situation_dto import StudentSituationDTO
 from src.repository.repository import Repository
+from src.services.history_manager import HistoryManager
+
 
 class StudentOperationError(BaseException):
     pass
 
 class StudentService:
     """ Handles operations on the Student repository. """
-    def __init__(self, student_repository: Repository, assignment_repository: Repository, grade_repository: Repository):
+    def __init__(self, history_manager: HistoryManager, student_repository: Repository):
         self.__student_repository = student_repository
-        self.__grade_repository = grade_repository
-        self.__assignment_repository = assignment_repository
+        self.__history = history_manager
 
     def populate(self):
         """ Adds a couple of entries. """
@@ -45,20 +43,22 @@ class StudentService:
             raise StudentOperationError("Student id already exists")
         student = Student(student_id, name, group)
         self.__student_repository.add(student)
-
-    def remove_student(self, student_id):
-        """ Removes the student, given their id. Returns the removed student. """
-        grades = self.__grade_repository.find_all_by_predicate(lambda g: g.student_id == student_id)
-        for id_pair in [(g.assignment_id, g.student_id) for g in grades]:
-            self.__grade_repository.remove_id(id_pair)
-        return self.__student_repository.remove_id(student_id)
+        self.__history.add_operation(
+            self.__student_repository.remove_id, [student_id],
+            self.__student_repository.add, [student]
+        )
 
     def update_student(self, student_id, name, group):
         """ Updates the data for a student, found by their id. """
         student = self.__student_repository.find_id(student_id)
+        original = Student(student.student_id, student.name, student.group)
         student.name = name
         student.group = group
         self.__student_repository.update(student)
+        self.__history.add_operation(
+            self.__student_repository.update, [original],
+            self.__student_repository.update, [student]
+        )
 
     def get_all_students(self):
         """ Returns a list of all the students. """
@@ -66,61 +66,5 @@ class StudentService:
 
     def get_all_students_in_group(self, group):
         """ Returns a list of all students that are in a group. """
-        return self.__student_repository.find_all_by_predicate(lambda s: s.group == group)
-
-    def get_ungraded_assignments_of_student(self, student_id) -> list[Assignment]:
-        """ Returns the ungraded assignments of a student. """
-        grades = self.__grade_repository.find_all_by_predicate(lambda g: g.student_id == student_id and not g.is_graded)
-        ungraded_ids = [g.assignment_id for g in grades]
-        asns = self.__assignment_repository.find_all_by_predicate(lambda a: a.assignment_id in ungraded_ids)
-        return asns
-
-    def get_graded_students_for_assignment(self, assignment_id) -> list[StudentAssignmentGradeDTO]:
-        """ Gets a list of students, their graded assignments, and the grade for each assignment. """
-        grades = self.__grade_repository.find_all_by_predicate(lambda g: g.assignment_id == assignment_id and g.is_graded)
-        asn = self.__assignment_repository.find_id(assignment_id)
-        out = []
-        for grade in grades:
-            student = self.__student_repository.find_id(grade.student_id)
-            out.append(StudentAssignmentGradeDTO(student, asn, grade))
-        out.sort(key=lambda dto: dto.grade.grade_value)
-        return out
-
-    def get_students_with_late_assignments(self) -> list[StudentAssignmentGradeDTO]:
-        """ Gets a list of students, and their late assignments. """
-        asns = self.__assignment_repository.get_all()
-        overdue_asns = filter(lambda a: a.is_overdue, asns)
-        out = []
-        for asn in overdue_asns:
-            grades = self.__grade_repository.find_all_by_predicate(lambda g: g.assignment_id == asn.assignment_id and not g.is_graded)
-            for grade in grades:
-                student = self.__student_repository.find_id(grade.student_id)
-                out.append(StudentAssignmentGradeDTO(student, asn, grade))
-        return out
-
-    def get_students_with_best_situation(self) -> list[StudentSituationDTO]:
-        """ Gets a list of students, along with their average. """
         students = self.__student_repository.get_all()
-        out = []
-        # for student in students:
-        #     grades = self.__grade_repository.find_all_by_predicate(lambda g: g.student_id == student.student_id and g.is_graded)
-        #     if len(grades) == 0:
-        #         continue
-        #     average = 0.0
-        #     for grade in grades:
-        #         average += grade.grade_value
-        #     average /= len(grades)
-        #     out.append(StudentSituationDTO(student, average))
-        grades = self.__grade_repository.get_all()
-        grade_situation = {}
-        for grade in grades:
-            student_id = grade.student_id
-            if student_id not in grade_situation:
-                grade_situation[student_id] = []
-            grade_situation[student_id].append(grade.grade_value)
-        for student_id in grade_situation:
-            student_name = self.__student_repository.find_id(student_id).name
-            student_average = sum(grade_situation[student_id]) / len(grade_situation[student_id])
-            out.append(StudentSituationDTO(student_name, student_average))
-        out.sort(key=lambda dto: dto.average)
-        return out
+        return [s for s in students if s.group == group]

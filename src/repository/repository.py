@@ -1,7 +1,3 @@
-from typing import Type
-
-from src.domain.validator import Validator, ValidationError
-
 
 class RepositoryError(BaseException):
     pass
@@ -44,12 +40,12 @@ class Repository:
             return self.__collection[id]
         raise RepositoryError("Element not found")
 
-    def find_all_by_predicate(self, predicate):
-        """ Finds and returns all elements that satisfy the given predicate, in a list. """
-        return [x for x in self.__collection.values() if predicate(x)]
+    # def find_all_by_predicate(self, predicate):
+    #     """ Finds and returns all elements that satisfy the given predicate, in a list. """
+    #     return [x for x in self.__collection.values() if predicate(x)]
 
     def remove_id(self, id):
-        """ Removes the given id. """
+        """ Removes the given id and returns it. """
         if self.id_exists(id):
             return self.__collection.pop(id)
         raise RepositoryError("Id doesn't exist")

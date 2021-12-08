@@ -2,15 +2,18 @@ import datetime
 
 from src.services.assignment_service import AssignmentService, AssignmentOperationError
 from src.services.grade_service import GradeService, GradeOperationError
+from src.services.history_manager import HistoryManager
 from src.services.student_service import StudentService, StudentOperationError
 
 
 class Console:
     """ Handles interaction between the Services and the Human. """
     def __init__(self,
+                 history_manager: HistoryManager,
                  student_service: StudentService,
                  assignment_service: AssignmentService,
                  grade_service: GradeService):
+        self.__history_manager = history_manager
         self.__student_service = student_service
         self.__assignment_service = assignment_service
         self.__grade_service = grade_service
@@ -34,7 +37,7 @@ class Console:
         print("Let's remove an assignment together!\n")
         assignment_id = int(input("Assignment id: ").strip())
         try:
-            self.__assignment_service.remove_assignment(assignment_id)
+            self.__grade_service.remove_assignment_and_grades(assignment_id)
         except AssignmentOperationError as e:
             print(f"Something went wrong: {e}")
 
@@ -74,7 +77,7 @@ class Console:
         print("Let's remove a student together.\n")
         student_id = int(input("Student id: ").strip())
         try:
-            self.__student_service.remove_student(student_id)
+            self.__grade_service.remove_student_and_grades(student_id)
         except StudentOperationError as e:
             print(f"Something went wrong: {e}")
 
@@ -125,7 +128,7 @@ class Console:
     def __handle_assignations_grade_student(self):
         student_id = int(input("Enter the student id: "))
         print("Ungraded assignments for student:")
-        asns = self.__student_service.get_ungraded_assignments_of_student(student_id)
+        asns = self.__grade_service.get_ungraded_assignments_of_student(student_id)
         for asn in asns:
             print(asn)
         if len(asns) == 0:
@@ -137,23 +140,29 @@ class Console:
 
     def __handle_statistics_assignment_students(self):
         assignment_id = int(input("Enter the assignment id: "))
-        dtos = self.__student_service.get_graded_students_for_assignment(assignment_id)
+        dtos = self.__grade_service.get_graded_students_for_assignment(assignment_id)
         for dto in dtos:
             print(f"Assignment {dto.assignment}\n"
                   f" - Student {dto.student}\n"
                   f" - Grade {dto.grade.grade_value}")
 
     def __handle_statistics_overdue_students(self):
-        dtos = self.__student_service.get_students_with_late_assignments()
+        dtos = self.__grade_service.get_students_with_late_assignments()
         for dto in dtos:
             print(f"Assignment {dto.assignment}\n"
                   f" - Student {dto.student}\n")
 
     def __handle_statistics_best_students(self):
-        dtos = self.__student_service.get_students_with_best_situation()
+        dtos = self.__grade_service.get_students_with_best_situation()
         for dto in dtos:
             print(f"Student {dto.student}\n"
                   f" - Average {dto.average}")
+
+    def __handle_undo(self):
+        self.__history_manager.undo()
+
+    def __handle_redo(self):
+        self.__history_manager.redo()
 
     def __run_suboptions(self, suboptions: dict, prompt: str):
         print(prompt)
@@ -161,10 +170,7 @@ class Console:
         if subopt == 'e': return
         subopt = int(subopt)
         # execute
-        try:
-            suboptions[subopt]()
-        except BaseException as e:
-            print(f"Something has happened. {e}")
+        suboptions[subopt]()
 
     def __print_menu(self):
         print("\nThe Student Assignment Manager (SAM). What do you want to do?\n"
@@ -172,6 +178,8 @@ class Console:
               "2. Modify students\n"
               "3. Modify assignations and grades\n"
               "4. View statistics\n"
+              "5. Sh*t! Undo!\n"
+              "6. Redo\n"
               "x. Exit\n")
 
     def __get_assignments_menu_prompt(self):
@@ -229,7 +237,9 @@ class Console:
                 1: self.__handle_statistics_assignment_students,
                 2: self.__handle_statistics_overdue_students,
                 3: self.__handle_statistics_best_students,
-            }, self.__get_statistics_menu_prompt())
+            }, self.__get_statistics_menu_prompt()),
+            5: self.__handle_undo,
+            6: self.__handle_redo,
         }
         while True:
             self.__print_menu()
@@ -237,4 +247,7 @@ class Console:
             if option == 'x':
                 break
             option = int(option)
-            options[option]()
+            try:
+                options[option]()
+            except BaseException as e:
+                print(f"Something has happened. {e}")

@@ -2,16 +2,17 @@ import datetime
 
 from src.domain.assignment import Assignment
 from src.repository.repository import Repository
+from src.services.history_manager import HistoryManager
+
 
 class AssignmentOperationError(BaseException):
     pass
 
 class AssignmentService:
     """ Handles operations on the Assignments repository. """
-    def __init__(self, assignment_repository: Repository, student_repository: Repository, grade_repository: Repository):
+    def __init__(self, history_manager: HistoryManager, assignment_repository: Repository):
         self.__assignment_repository = assignment_repository
-        self.__student_repository = student_repository
-        self.__grade_repository = grade_repository
+        self.__history = history_manager
 
     def populate(self):
         """ Adds a couple of entries. """
@@ -44,20 +45,24 @@ class AssignmentService:
             raise AssignmentOperationError("Assignment id already exists")
         assignment = Assignment(assignment_id, description, deadline)
         self.__assignment_repository.add(assignment)
-
-    def remove_assignment(self, assignment_id):
-        """ Removes an assignment given its id. Returns the removed assignment. """
-        grades = self.__grade_repository.find_all_by_predicate(lambda g: g.assignment_id == assignment_id)
-        for id_pair in [(g.assignment_id, g.student_id) for g in grades]:
-            self.__grade_repository.remove_id(id_pair)
-        return self.__assignment_repository.remove_id(assignment_id)
+        # add undo op
+        self.__history.add_operation(
+            self.__assignment_repository.remove_id, [assignment_id],
+            self.__assignment_repository.add, [assignment]
+        )
 
     def update_assignment(self, assignment_id, description, deadline):
         """ Updates an assignment, using the assignment id as a primary key. """
         assignment = self.__assignment_repository.find_id(assignment_id)
+        original = Assignment(assignment.assignment_id, assignment.description, assignment.deadline)
         assignment.description = description
         assignment.deadline = deadline
         self.__assignment_repository.update(assignment)
+        # add undo op
+        self.__history.add_operation(
+            self.__assignment_repository.update, [original],
+            self.__assignment_repository.update, [assignment]
+        )
 
     def get_all_assignments(self):
         """ List all assignments. """
